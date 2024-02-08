@@ -63,10 +63,10 @@ func (c Route) Serve(ctx context.Context) {
 				c.toClient.Close()
 				return
 			case packet := <-c.fromClientToServer:
-				fmt.Printf("Packet from %s forwarded to server", c.toClient.RemoteAddr().String())
+				fmt.Printf("Packet from %s forwarded to server\n", c.toClient.RemoteAddr().String())
 				c.toServer.Write(packet.Data)
 			case packet := <-c.fromServerToClient:
-				fmt.Printf("Server responded to client %s", c.toClient.RemoteAddr().String())
+				fmt.Printf("Server responded to client %s\n", c.toClient.RemoteAddr().String())
 				c.toClient.Write(packet.Data)
 			}
 		}

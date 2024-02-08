@@ -106,7 +106,7 @@ func gracefullShutdown() (ctx context.Context, cancel context.CancelFunc) {
 		select {
 		case <-ctx.Done():
 		case _signal := <-exit:
-			log.Printf("Caught signal: %s", _signal)
+			log.Printf("Caught signal: %s\n", _signal)
 			log.Println("Shutting down")
 			cancel()
 		}
