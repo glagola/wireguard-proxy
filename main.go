@@ -57,6 +57,7 @@ func main() {
 
 	for p := range packetsFromClients {
 		clientAddr := p.Conn.RemoteAddr().String()
+		log.Printf("New packet from %s\n", clientAddr)
 
 		conn, exists := byClient[clientAddr]
 
@@ -67,7 +68,7 @@ func main() {
 				continue
 			}
 
-			log.Printf("New connection %s <-> %d:proxy:%s <-> %d:%s\n", clientAddr, cfg.proxyPort, strings.Split(proxyToServerConn.LocalAddr().Network(), ":")[1], cfg.serverPort, cfg.serverIP)
+			log.Printf("New connection %s <-> %d:proxy:%s <-> %d:%s\n", clientAddr, cfg.proxyPort, strings.Split(proxyToServerConn.LocalAddr().String(), ":")[1], cfg.serverPort, cfg.serverIP)
 
 			byClient[clientAddr] = connection.New(
 				p.Conn,
