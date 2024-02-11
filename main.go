@@ -144,7 +144,7 @@ func udpToChan(ctx context.Context, receiverAddr *net.UDPAddr) chan packet.Packe
 		for !done {
 			buffer := make([]byte, 1300) // TODO alloc memory only if previous spent
 
-			socket.SetDeadline(time.Now().Add(500 * time.Millisecond))
+			socket.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 			n, senderAddr, err := socket.ReadFromUDP(buffer)
 			if err != nil {
 				if e, ok := err.(net.Error); ok && e.Timeout() {
