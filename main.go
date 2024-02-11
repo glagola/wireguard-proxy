@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 	"wireguard-proxy/internal/connection"
 	"wireguard-proxy/internal/packet"
 )
@@ -123,11 +124,11 @@ func udpToChan(ctx context.Context, receiverAddr *net.UDPAddr) chan packet.Packe
 		if err != nil {
 			log.Fatalf("Failed to listen %s", receiverAddr)
 		}
-		defer socket.Close()
-		defer close(packets)
 
 		stop := make(chan struct{})
 		defer func() {
+			socket.Close()
+			close(packets)
 			stop <- struct{}{}
 		}()
 
@@ -135,16 +136,21 @@ func udpToChan(ctx context.Context, receiverAddr *net.UDPAddr) chan packet.Packe
 		go func() {
 			select {
 			case <-ctx.Done():
-				done = true
 			case <-stop:
 			}
+			done = true
 		}()
 
 		for !done {
 			buffer := make([]byte, 1300) // TODO alloc memory only if previous spent
 
+			socket.SetDeadline(time.Now().Add(500 * time.Millisecond))
 			n, senderAddr, err := socket.ReadFromUDP(buffer)
 			if err != nil {
+				if e, ok := err.(net.Error); ok && e.Timeout() {
+					continue
+				}
+
 				log.Fatalf("Error during udp reading %e", err)
 			}
 
