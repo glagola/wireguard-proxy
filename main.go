@@ -152,7 +152,7 @@ func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 					continue
 				}
 
-				log.Fatalf("Error during udp reading %e", err)
+				log.Fatalf("udpToChan: Error during udp reading %e", err)
 			}
 
 			if n > 0 {
