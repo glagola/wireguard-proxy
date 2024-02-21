@@ -43,12 +43,15 @@ func (c Route) Serve(ctx context.Context) {
 			default:
 				buffer := make([]byte, 1300)
 
+				// TODO read deadline
 				n, _, err := c.toServer.ReadFromUDP(buffer)
 				if err != nil {
 					log.Fatalf("Error during udp reading %e", err)
 				}
 
 				if n > 0 {
+					fmt.Printf("From server: %s\n", string(buffer[:n]))
+
 					c.fromServerToClient <- packet.Packet{
 						Addr: c.clientAddr,
 						Data: buffer[:n],
@@ -66,13 +69,22 @@ func (c Route) Serve(ctx context.Context) {
 				c.toClient.Close()
 				return
 			case packet := <-c.fromClientToServer:
-				fmt.Printf("Packet from %s forwarded to server\n", c.toClient.RemoteAddr().String())
+				fmt.Println("Packet received fromClientToServer")
+				fmt.Printf("Packet from %s forwarded to server\n", c.toClient.RemoteAddr())
+
 				// TODO set write deadline
-				c.toServer.Write(packet.Data)
+				if _, err := c.toServer.Write(packet.Data); err != nil {
+					panic(err)
+				}
+
 			case packet := <-c.fromServerToClient:
-				fmt.Printf("Server responded to client %s\n", c.toClient.RemoteAddr().String())
+				fmt.Println("Packet received fromServerToClient")
+				fmt.Printf("Server responded to client %s\n", c.toClient.RemoteAddr())
+
 				// TODO set write deadline
-				c.toClient.WriteToUDP(packet.Data, &packet.Addr)
+				if _, err := c.toClient.WriteToUDP(packet.Data, &packet.Addr); err != nil {
+					panic(err)
+				}
 			}
 		}
 	}()

@@ -80,8 +80,11 @@ func main() {
 			)
 
 			byClient[clientAddr].Serve(ctx)
+
+			conn = byClient[clientAddr]
 		}
 
+		fmt.Println("Packet forwarded")
 		conn.ForwardToServer(p)
 	}
 }
@@ -153,6 +156,8 @@ func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 			}
 
 			if n > 0 {
+				fmt.Printf("From client: %s\n", string(buffer[:n]))
+
 				packets <- packet.Packet{
 					Addr: *senderAddr,
 					Data: buffer[:n],
