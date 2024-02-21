@@ -52,12 +52,14 @@ func main() {
 
 	ctx, _ := gracefullShutdown()
 
-	packetsFromClients := udpToChan(ctx, cfg.MustAddrForClients())
+	localAddr := cfg.MustAddrForClients()
+	clientToProxyConn := mustListenUDP(localAddr)
+	packetsFromClients := udpToChan(ctx, clientToProxyConn)
 
 	byClient := make(map[string]connection.Route)
 
 	for p := range packetsFromClients {
-		clientAddr := p.Conn.RemoteAddr().String()
+		clientAddr := p.Addr.String()
 		log.Printf("New packet from %s\n", clientAddr)
 
 		conn, exists := byClient[clientAddr]
@@ -72,8 +74,9 @@ func main() {
 			log.Printf("New connection %s <-> %d:proxy:%s <-> %d:%s\n", clientAddr, cfg.proxyPort, strings.Split(proxyToServerConn.LocalAddr().String(), ":")[1], cfg.serverPort, cfg.serverIP)
 
 			byClient[clientAddr] = connection.New(
-				p.Conn,
+				clientToProxyConn,
 				proxyToServerConn,
+				p.Addr,
 			)
 
 			byClient[clientAddr].Serve(ctx)
@@ -116,15 +119,10 @@ func gracefullShutdown() (ctx context.Context, cancel context.CancelFunc) {
 	return
 }
 
-func udpToChan(ctx context.Context, receiverAddr *net.UDPAddr) chan packet.Packet {
+func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 	packets := make(chan packet.Packet, 10000)
 
 	go func() {
-		socket, err := net.ListenUDP("udp", receiverAddr)
-		if err != nil {
-			log.Fatalf("Failed to listen %s", receiverAddr)
-		}
-
 		stop := make(chan struct{})
 		defer func() {
 			socket.Close()
@@ -155,9 +153,8 @@ func udpToChan(ctx context.Context, receiverAddr *net.UDPAddr) chan packet.Packe
 			}
 
 			if n > 0 {
-				conn, _ := net.DialUDP("udp", receiverAddr, senderAddr) // TODO add context
 				packets <- packet.Packet{
-					Conn: conn,
+					Addr: *senderAddr,
 					Data: buffer[:n],
 				}
 			}
@@ -165,4 +162,13 @@ func udpToChan(ctx context.Context, receiverAddr *net.UDPAddr) chan packet.Packe
 	}()
 
 	return packets
+}
+
+func mustListenUDP(addr *net.UDPAddr) *net.UDPConn {
+	socket, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		log.Fatalf("Failed to listen %s", addr)
+	}
+
+	return socket
 }

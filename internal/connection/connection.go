@@ -16,14 +16,17 @@ type Route struct {
 
 	toClient *net.UDPConn
 	toServer *net.UDPConn
+
+	clientAddr net.UDPAddr
 }
 
-func New(toClient, toServer *net.UDPConn) Route {
+func New(toClient, toServer *net.UDPConn, clientAddr net.UDPAddr) Route {
 	return Route{
 		fromClientToServer: make(chan packet.Packet, queueSize),
 		fromServerToClient: make(chan packet.Packet, queueSize),
 		toClient:           toClient,
 		toServer:           toServer,
+		clientAddr:         clientAddr,
 	}
 }
 
@@ -47,7 +50,7 @@ func (c Route) Serve(ctx context.Context) {
 
 				if n > 0 {
 					c.fromServerToClient <- packet.Packet{
-						Conn: c.toServer,
+						Addr: c.clientAddr,
 						Data: buffer[:n],
 					}
 				}
@@ -64,10 +67,12 @@ func (c Route) Serve(ctx context.Context) {
 				return
 			case packet := <-c.fromClientToServer:
 				fmt.Printf("Packet from %s forwarded to server\n", c.toClient.RemoteAddr().String())
+				// TODO set write deadline
 				c.toServer.Write(packet.Data)
 			case packet := <-c.fromServerToClient:
 				fmt.Printf("Server responded to client %s\n", c.toClient.RemoteAddr().String())
-				c.toClient.Write(packet.Data)
+				// TODO set write deadline
+				c.toClient.WriteToUDP(packet.Data, &packet.Addr)
 			}
 		}
 	}()
