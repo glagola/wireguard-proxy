@@ -41,7 +41,7 @@ func (c Route) Serve(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			default:
-				buffer := make([]byte, 1300)
+				buffer := make([]byte, 65507)
 
 				// TODO read deadline
 				n, _, err := c.toServer.ReadFromUDP(buffer)

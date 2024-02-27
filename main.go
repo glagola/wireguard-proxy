@@ -143,7 +143,7 @@ func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 		}()
 
 		for !done {
-			buffer := make([]byte, 1300) // TODO alloc memory only if previous spent
+			buffer := make([]byte, 65507) // TODO alloc memory only if previous spent
 
 			socket.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 			n, senderAddr, err := socket.ReadFromUDP(buffer)
