@@ -156,7 +156,7 @@ func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 			}
 
 			if n > 0 {
-				fmt.Printf("From client: %s\n", string(buffer[:n]))
+				// fmt.Printf("From client: %s\n", string(buffer[:n]))
 
 				packets <- packet.Packet{
 					Addr: *senderAddr,

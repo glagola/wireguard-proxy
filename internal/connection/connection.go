@@ -50,7 +50,7 @@ func (c Route) Serve(ctx context.Context) {
 				}
 
 				if n > 0 {
-					fmt.Printf("From server: %s\n", string(buffer[:n]))
+					// fmt.Printf("From server: %s\n", string(buffer[:n]))
 
 					c.fromServerToClient <- packet.Packet{
 						Addr: c.clientAddr,
