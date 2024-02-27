@@ -84,7 +84,7 @@ func main() {
 			conn = byClient[clientAddr]
 		}
 
-		fmt.Println("Packet forwarded")
+		// fmt.Println("Packet forwarded")
 		conn.ForwardToServer(p)
 	}
 }
