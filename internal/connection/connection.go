@@ -69,8 +69,8 @@ func (c Route) Serve(ctx context.Context) {
 				c.toClient.Close()
 				return
 			case packet := <-c.fromClientToServer:
-				fmt.Println("Packet received CLIENT -> SERVER")
-				fmt.Printf("Packet from %s forwarded to server\n", c.clientAddr.String())
+				// fmt.Println("Packet received CLIENT -> SERVER")
+				// fmt.Printf("Packet from %s forwarded to server\n", c.clientAddr.String())
 
 				// TODO set write deadline
 				if _, err := c.toServer.Write(packet.Data); err != nil {
@@ -79,8 +79,8 @@ func (c Route) Serve(ctx context.Context) {
 				}
 
 			case packet := <-c.fromServerToClient:
-				fmt.Println("Packet received SERVER -> CLIENT")
-				fmt.Printf("Server responded to client %s\n", c.clientAddr.String())
+				// fmt.Println("Packet received SERVER -> CLIENT")
+				// fmt.Printf("Server responded to client %s\n", c.clientAddr.String())
 
 				// TODO set write deadline
 				if _, err := c.toClient.WriteToUDP(packet.Data, &packet.Addr); err != nil {

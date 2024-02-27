@@ -60,7 +60,7 @@ func main() {
 
 	for p := range packetsFromClients {
 		clientAddr := p.Addr.String()
-		log.Printf("New packet from %s\n", clientAddr)
+		// log.Printf("New packet from %s\n", clientAddr)
 
 		conn, exists := byClient[clientAddr]
 
