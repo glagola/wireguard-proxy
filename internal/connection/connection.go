@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 	"wireguard-proxy/internal/packet"
 )
 
@@ -36,28 +37,29 @@ func (c Route) ForwardToServer(p packet.Packet) {
 
 func (c Route) Serve(ctx context.Context) {
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				buffer := make([]byte, 65507)
-
-				// TODO read deadline
-				n, _, err := c.toServer.ReadFromUDP(buffer)
-				if err != nil {
-					log.Fatalf("Serve: Error during udp reading %e", err)
+		buffer := make([]byte, 65507)
+		for ctx.Err() == nil {
+			// TODO read deadline
+			c.toServer.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+			n, _, err := c.toServer.ReadFromUDP(buffer)
+			if err != nil {
+				if e, ok := err.(net.Error); ok && e.Timeout() {
+					continue
 				}
 
-				if n > 0 {
-					// fmt.Printf("From server: %s\n", string(buffer[:n]))
-
-					c.fromServerToClient <- packet.Packet{
-						Addr: c.clientAddr,
-						Data: buffer[:n],
-					}
-				}
+				log.Fatalf("Serve: Error during udp reading %e", err)
 			}
+
+			if n <= 0 {
+				continue
+			}
+
+			c.fromServerToClient <- packet.Packet{
+				Addr: c.clientAddr,
+				Data: buffer[:n],
+			}
+
+			buffer = make([]byte, 65507)
 		}
 	}()
 
