@@ -142,9 +142,8 @@ func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 			done = true
 		}()
 
+		buffer := make([]byte, 65507)
 		for !done {
-			buffer := make([]byte, 65507) // TODO alloc memory only if previous spent
-
 			socket.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
 			n, senderAddr, err := socket.ReadFromUDP(buffer)
 			if err != nil {
@@ -155,14 +154,15 @@ func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 				log.Fatalf("udpToChan: Error during udp reading %e", err)
 			}
 
-			if n > 0 {
-				// fmt.Printf("From client: %s\n", string(buffer[:n]))
-
-				packets <- packet.Packet{
-					Addr: *senderAddr,
-					Data: buffer[:n],
-				}
+			if n <= 0 {
+				continue
 			}
+
+			packets <- packet.Packet{
+				Addr: *senderAddr,
+				Data: buffer[:n],
+			}
+			buffer = make([]byte, 65507)
 		}
 	}()
 
