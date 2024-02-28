@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 	"time"
 	"wireguard-proxy/internal/connection"
+	"wireguard-proxy/internal/logger"
 	"wireguard-proxy/internal/packet"
 )
 
@@ -60,7 +62,6 @@ func main() {
 
 	for p := range packetsFromClients {
 		clientAddr := p.Addr.String()
-		// log.Printf("New packet from %s\n", clientAddr)
 
 		conn, exists := byClient[clientAddr]
 
@@ -84,7 +85,6 @@ func main() {
 			conn = byClient[clientAddr]
 		}
 
-		// fmt.Println("Packet forwarded")
 		conn.ForwardToServer(p)
 	}
 }
@@ -125,48 +125,45 @@ func gracefullShutdown() (ctx context.Context, cancel context.CancelFunc) {
 func udpToChan(ctx context.Context, socket *net.UDPConn) chan packet.Packet {
 	packets := make(chan packet.Packet, 10000)
 
+	ctxWithLogger := logger.AddLogger(ctx, slog.Default())
+
 	go func() {
-		stop := make(chan struct{})
-		defer func() {
-			socket.Close()
-			close(packets)
-			stop <- struct{}{}
-		}()
-
-		done := false
-		go func() {
-			select {
-			case <-ctx.Done():
-			case <-stop:
-			}
-			done = true
-		}()
-
-		buffer := make([]byte, 65507)
-		for !done {
-			socket.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
-			n, senderAddr, err := socket.ReadFromUDP(buffer)
-			if err != nil {
-				if e, ok := err.(net.Error); ok && e.Timeout() {
-					continue
-				}
-
-				log.Fatalf("udpToChan: Error during udp reading %e", err)
-			}
-
-			if n <= 0 {
-				continue
-			}
-
+		udpPipe(ctxWithLogger, socket, func(data []byte, sender net.UDPAddr) {
 			packets <- packet.Packet{
-				Addr: *senderAddr,
-				Data: buffer[:n],
+				Data: data,
+				Addr: sender,
 			}
-			buffer = make([]byte, 65507)
-		}
+		})
 	}()
 
 	return packets
+}
+
+func udpPipe(ctx context.Context, socket *net.UDPConn, pipe func([]byte, net.UDPAddr)) {
+	logger := logger.MustGetLogger(ctx)
+
+	buffer := make([]byte, 65507)
+	for ctx.Err() == nil {
+		socket.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+		n, senderAddr, err := socket.ReadFromUDP(buffer)
+		if err != nil {
+			if e, ok := err.(net.Error); ok && e.Timeout() {
+				continue
+			}
+
+			logger.Error("failed to read from UDP %e", err, slog.String("sender", senderAddr.String()))
+		}
+
+		if n <= 0 {
+			continue
+		}
+
+		pipe(
+			buffer[:n],
+			*senderAddr,
+		)
+		buffer = make([]byte, 65507)
+	}
 }
 
 func mustListenUDP(addr *net.UDPAddr) *net.UDPConn {
